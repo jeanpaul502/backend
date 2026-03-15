@@ -26,8 +26,9 @@ async function bootstrap() {
     credentials: true,
   });
   
-  // Important pour les plateformes de déploiement (Koyeb, Render, Railway, etc.)
-  const port = process.env.PORT || 3001;
+  // Important pour les plateformes de déploiement (Koyeb, Render, Railway, Dokploy, etc.)
+  // On privilégie le port 3000 par défaut car c'est le standard pour beaucoup de plateformes.
+  const port = process.env.PORT || 3000;
   await app.listen(port, '0.0.0.0');
   console.log(`Application is running on port: ${port}`);
 }

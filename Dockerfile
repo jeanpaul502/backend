@@ -29,8 +29,8 @@ RUN npm install --only=production
 # Copier les fichiers compilés depuis l'étape de build
 COPY --from=builder /app/dist ./dist
 
-# Exposer le port (sera redéfini par Dokploy si nécessaire, mais 3001 par défaut dans votre code)
-EXPOSE 3001
+# Exposer le port standard 3000
+EXPOSE 3000
 
 # Définir la variable d'environnement pour la production
 ENV NODE_ENV=production
