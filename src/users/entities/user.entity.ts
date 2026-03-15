@@ -7,17 +7,17 @@ import {
   BeforeInsert,
 } from 'typeorm';
 import { Session } from './session.entity';
-import { createId } from '@paralleldrive/cuid2';
+import { v4 as uuidv4 } from 'uuid';
 
 @Entity()
 export class User {
-  @PrimaryColumn('varchar', { length: 32 })
+  @PrimaryColumn('varchar', { length: 36 }) // UUIDs are 36 chars long
   id: string;
 
   @BeforeInsert()
   generateId() {
     if (!this.id) {
-      this.id = createId();
+      this.id = uuidv4();
     }
   }
 
