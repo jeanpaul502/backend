@@ -21,16 +21,14 @@ async function bootstrap() {
   );
 
   app.enableCors({
-    origin: [
-      'http://localhost:3000',
-      'http://127.0.0.1:3000',
-      'http://192.168.43.31:3000',
-      'http://localhost:8081', // Expo default
-      'http://192.168.43.31:8081',
-    ],
+    origin: '*', // En production, il est souvent plus simple d'autoriser toutes les origines au début, ou de spécifier l'URL exacte de votre frontend/app mobile.
     methods: 'GET,HEAD,PUT,PATCH,POST,DELETE,OPTIONS',
     credentials: true,
   });
-  await app.listen(process.env.PORT ?? 3001, '0.0.0.0');
+  
+  // Important pour les plateformes de déploiement (Koyeb, Render, Railway, etc.)
+  const port = process.env.PORT || 3001;
+  await app.listen(port, '0.0.0.0');
+  console.log(`Application is running on port: ${port}`);
 }
 bootstrap();
