@@ -12,4 +12,5 @@ export const databaseConfig = async (
   database: configService.get<string>('DATABASE_NAME'),
   entities: [__dirname + '/../**/*.entity{.ts,.js}'],
   synchronize: true, // Auto-create tables (set to false in production)
+  dropSchema: process.env.DROP_SCHEMA === 'true', // Use with caution: drops all tables
 });
