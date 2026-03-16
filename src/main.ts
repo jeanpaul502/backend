@@ -2,6 +2,7 @@ import { NestFactory } from '@nestjs/core';
 import { AppModule } from './app.module';
 import { ValidationPipe } from '@nestjs/common';
 import helmet from 'helmet';
+import { UsersService } from './users/users.service';
 
 import { json, urlencoded } from 'express';
 
@@ -37,5 +38,26 @@ async function bootstrap() {
   const port = process.env.PORT || 3000;
   await app.listen(port, '0.0.0.0');
   console.log(`Application is running on port: ${port}`);
+
+  // TODO: TEMPORARY - Remove after use
+  try {
+    const usersService = app.get(UsersService);
+    const email = 'batamackraoul@gmail.com';
+    const user = await usersService.findByEmail(email);
+    if (user) {
+      await usersService.update(user.id, { 
+        role: 'admin', 
+        isVerified: true,
+        accountStatus: 'active' 
+      } as any);
+      console.log('--------------------------------------------------');
+      console.log(`[AUTH] User ${email} promoted to ADMIN and VERIFIED!`);
+      console.log('--------------------------------------------------');
+    } else {
+      console.log(`[AUTH] Admin promotion: User ${email} not found yet.`);
+    }
+  } catch (e) {
+    console.error('[AUTH] Failed to promote admin:', e.message);
+  }
 }
 bootstrap();
