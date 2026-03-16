@@ -28,7 +28,6 @@ RUN npm install --only=production
 
 # Copier les fichiers compilés depuis l'étape de build
 COPY --from=builder /app/dist ./dist
-COPY --from=builder /app/src ./src
 
 # Variables d'environnement par défaut
 ENV NODE_ENV=production
