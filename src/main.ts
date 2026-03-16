@@ -26,9 +26,13 @@ async function bootstrap() {
   );
 
   app.enableCors({
-    origin: '*', // En production, il est souvent plus simple d'autoriser toutes les origines au début, ou de spécifier l'URL exacte de votre frontend/app mobile.
+    origin: (origin, callback) => {
+      // Autorise toutes les origines (utile pour web + mobile)
+      callback(null, true);
+    },
     methods: 'GET,HEAD,PUT,PATCH,POST,DELETE,OPTIONS',
     credentials: true,
+    allowedHeaders: 'Content-Type,Accept,Authorization,X-Requested-With',
   });
   
   // Important pour les plateformes de déploiement (Koyeb, Render, Railway, Dokploy, etc.)
