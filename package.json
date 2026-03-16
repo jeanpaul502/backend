@@ -13,7 +13,7 @@
     "start:debug": "nest start --debug --watch",
     "start:prod": "node dist/main",
     "lint": "eslint \"{src,apps,libs}/**/*.ts\" --fix",
-    "set-admin": "node dist/scripts/set-admin.js"
+    "set-admin": "ts-node src/scripts/set-admin.ts"
   },
   "dependencies": {
     "@nestjs-modules/mailer": "^2.0.2",
@@ -47,7 +47,10 @@
     "rxjs": "^7.8.1",
     "socket.io": "^4.8.3",
     "typeorm": "^0.3.28",
-    "uuid": "^10.0.0"
+    "uuid": "^10.0.0",
+    "ts-node": "^10.9.2",
+    "typescript": "^5.7.3",
+    "@types/node": "^22.10.7"
   },
   "devDependencies": {
     "@eslint/eslintrc": "^3.2.0",
