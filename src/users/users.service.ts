@@ -256,6 +256,8 @@ export class UsersService {
   }
 
   async remove(id: string) {
+    // Delete sessions first to avoid FK constraint errors
+    await this.sessionsRepository.delete({ user: { id } });
     await this.usersRepository.delete(id);
   }
 

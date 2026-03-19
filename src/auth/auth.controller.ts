@@ -150,16 +150,33 @@ export class AuthController {
   async updateProfile(
     @Request() req,
     @Body()
-    body: { firstName?: string; lastName?: string; profilePicture?: string },
+    body: {
+      firstName?: string;
+      lastName?: string;
+      profilePicture?: string;
+      emailNotifications?: boolean;
+      whatsappPhone?: string;
+      telegramChatId?: string;
+      telegramUsername?: string;
+      whatsappPhone2?: string;
+    },
   ) {
-    const user = await this.usersService.findByEmail(req.user.email);
-    if (user) {
-      await this.usersService.update(user.id, body);
-      const updatedUser = await this.usersService.findOne(user.id);
-      if (updatedUser) {
-        const { password, ...result } = updatedUser;
-        return result;
-      }
+    const userId = req.user.userId;
+    // Only pick allowed fields to avoid overwriting sensitive data
+    const allowed: any = {};
+    if (body.firstName !== undefined) allowed.firstName = body.firstName;
+    if (body.lastName !== undefined) allowed.lastName = body.lastName;
+    if (body.profilePicture !== undefined) allowed.profilePicture = body.profilePicture;
+    if (body.emailNotifications !== undefined) allowed.emailNotifications = body.emailNotifications;
+    if (body.whatsappPhone !== undefined) allowed.whatsappPhone = body.whatsappPhone;
+    if (body.telegramChatId !== undefined) allowed.telegramChatId = body.telegramChatId;
+    if (body.telegramUsername !== undefined) allowed.telegramUsername = body.telegramUsername;
+
+    await this.usersService.update(userId, allowed);
+    const updatedUser = await this.usersService.findOne(userId);
+    if (updatedUser) {
+      const { password, ...result } = updatedUser;
+      return result;
     }
     return null;
   }
@@ -167,11 +184,8 @@ export class AuthController {
   @UseGuards(AuthGuard('jwt'))
   @Delete('delete')
   async deleteAccount(@Request() req) {
-    const user = await this.usersService.findByEmail(req.user.email);
-    if (user) {
-      await this.usersService.remove(user.id);
-      return { message: 'Account deleted' };
-    }
-    return null;
+    const userId = req.user.userId;
+    await this.usersService.remove(userId);
+    return { message: 'Account deleted' };
   }
 }
