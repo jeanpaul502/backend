@@ -19,8 +19,10 @@ export class ProxyController {
       return res.status(400).send('Missing URL');
     }
 
-    const host = req.headers.host || 'localhost';
-    const protocol = req.headers['x-forwarded-proto'] || req.protocol;
+    const hostHeader = req.headers.host;
+    const host = (Array.isArray(hostHeader) ? hostHeader[0] : hostHeader) || 'localhost';
+    const protoHeader = req.headers['x-forwarded-proto'];
+    const protocol = (Array.isArray(protoHeader) ? protoHeader[0] : protoHeader) || req.protocol;
 
     let token = tokenQuery;
     if (!token && req.headers.authorization) {
@@ -53,7 +55,8 @@ export class ProxyController {
     }
 
     const host = req.headers.host || 'localhost';
-    const protocol = req.headers['x-forwarded-proto'] || req.protocol;
+    const protoHeader = req.headers['x-forwarded-proto'];
+    const protocol = (Array.isArray(protoHeader) ? protoHeader[0] : protoHeader) || req.protocol;
 
     let token = tokenQuery;
     if (!token && req.headers.authorization) {
