@@ -20,7 +20,7 @@ export class ProxyController {
     }
 
     const host = req.headers.host || 'localhost';
-    const protocol = req.protocol;
+    const protocol = req.headers['x-forwarded-proto'] || req.protocol;
 
     let token = tokenQuery;
     if (!token && req.headers.authorization) {
@@ -53,7 +53,7 @@ export class ProxyController {
     }
 
     const host = req.headers.host || 'localhost';
-    const protocol = req.protocol;
+    const protocol = req.headers['x-forwarded-proto'] || req.protocol;
 
     let token = tokenQuery;
     if (!token && req.headers.authorization) {
