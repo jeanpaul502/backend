@@ -392,29 +392,37 @@ export class UsersService {
 
     // Update User with latest session info
     user.lastActive = new Date();
-    if (sessionData.ipAddress) user.lastIp = sessionData.ipAddress;
+    
+    // Handle IP address - extract first one if it's a list (common with proxies)
+    let ip = sessionData.ipAddress;
+    if (ip && ip.includes(',')) {
+      ip = ip.split(',')[0].trim();
+    }
+    // Simple cleanup for local IPv6 loopback
+    if (ip === '::1') ip = '127.0.0.1';
+    if (ip?.startsWith('::ffff:')) ip = ip.replace('::ffff:', '');
+
+    if (ip) user.lastIp = ip;
     if (sessionData.country) user.lastCountry = sessionData.country;
     if (countryCode) user.lastCountryCode = countryCode;
     if (sessionData.city) user.lastCity = sessionData.city;
-    if (sessionData.device) user.lastDevice = sessionData.device; // Or construct a string from device/os/browser
 
-    // Construct a friendly device string if possible
-    // Prioritize "Device Name" requested by user (e.g. "iPhone 12 Pro", "Windows 11")
-    // If device string seems like a full name (has spaces or version), use it.
-    // Otherwise try to construct from OS/Browser.
-
-    if (
-      sessionData.device &&
-      sessionData.device !== 'Ordinateur' &&
-      sessionData.device !== 'Téléphone' &&
-      sessionData.device !== 'Tablette'
-    ) {
-      user.lastDevice = sessionData.device;
-    } else if (sessionData.os && sessionData.browser) {
-      user.lastDevice = `${sessionData.browser} sur ${sessionData.os}`;
-    } else if (sessionData.device) {
-      user.lastDevice = sessionData.device;
+    // Improved Device Construction
+    // If we have a specific device name (like "iPhone 13"), use it.
+    // Ensure we don't just say "Ordinateur" if we have OS/Browser info.
+    let deviceString = sessionData.device || 'Inconnu';
+    
+    const isGeneric = ['Ordinateur', 'Téléphone', 'Tablette', 'Inconnu', 'Unknown'].includes(deviceString);
+    
+    if (isGeneric && sessionData.os && sessionData.browser) {
+      deviceString = `${sessionData.browser} (${sessionData.os})`;
+    } else if (isGeneric && sessionData.os) {
+      deviceString = sessionData.os;
+    } else if (isGeneric && sessionData.browser) {
+      deviceString = sessionData.browser;
     }
+    
+    user.lastDevice = deviceString;
 
     await this.usersRepository.save(user);
 

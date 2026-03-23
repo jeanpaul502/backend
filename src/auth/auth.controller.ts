@@ -36,6 +36,9 @@ export class AuthController {
       browser,
       deviceType,
     } = body;
+    const clientIp = req.headers['x-forwarded-for'] || req.socket.remoteAddress;
+    const finalIp = (ipAddress && ipAddress !== 'Unknown' && ipAddress !== '') ? ipAddress : clientIp;
+
     return this.authService.login(req.user, {
       device,
       os,
@@ -44,7 +47,7 @@ export class AuthController {
       city,
       country,
       countryCode,
-      ipAddress,
+      ipAddress: finalIp,
       browser,
       deviceType,
     });

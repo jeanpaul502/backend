@@ -25,6 +25,11 @@ export class MoviesService {
 
     const movie = this.moviesRepository.create(createMovieDto);
     const savedMovie = await this.moviesRepository.save(movie);
+    
+    if (savedMovie.isTop10) {
+      await this.enforceTop10Limit();
+    }
+    
     this.eventsGateway.emitMovieCreated(savedMovie);
     return savedMovie;
   }
@@ -39,7 +44,27 @@ export class MoviesService {
 
   async update(id: string, updateMovieDto: UpdateMovieDto) {
     await this.moviesRepository.update(id, updateMovieDto);
-    return this.findOne(id);
+    const updated = await this.findOne(id);
+    
+    if (updated?.isTop10) {
+      await this.enforceTop10Limit();
+    }
+    
+    return updated;
+  }
+
+  private async enforceTop10Limit() {
+    const top10 = await this.moviesRepository.find({
+      where: { isTop10: true },
+      order: { updatedAt: 'DESC' }
+    });
+
+    if (top10.length > 10) {
+      const toRemove = top10.slice(10);
+      for (const movie of toRemove) {
+        await this.moviesRepository.update(movie.id, { isTop10: false });
+      }
+    }
   }
 
   remove(id: string) {
