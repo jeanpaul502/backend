@@ -66,4 +66,12 @@ export class EventsGateway
   emitMovieCreated(movie: any) {
     this.server.emit('movieCreated', movie);
   }
+
+  emitMovieUpdated(movie: any) {
+    this.server.emit('movieUpdated', movie);
+  }
+
+  emitMovieDeleted(id: string) {
+    this.server.emit('movieDeleted', { id });
+  }
 }

@@ -50,6 +50,9 @@ export class MoviesService {
       await this.enforceTop10Limit();
     }
     
+    if (updated) {
+        this.eventsGateway.emitMovieUpdated(updated);
+    }
     return updated;
   }
 
@@ -63,11 +66,17 @@ export class MoviesService {
       const toRemove = top10.slice(10);
       for (const movie of toRemove) {
         await this.moviesRepository.update(movie.id, { isTop10: false });
+        const fix = await this.findOne(movie.id);
+        if (fix) {
+            this.eventsGateway.emitMovieUpdated(fix);
+        }
       }
     }
   }
 
-  remove(id: string) {
-    return this.moviesRepository.delete(id);
+  async remove(id: string) {
+    const res = await this.moviesRepository.delete(id);
+    this.eventsGateway.emitMovieDeleted(id);
+    return res;
   }
 }
