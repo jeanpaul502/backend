@@ -24,9 +24,8 @@ const HTTP_AGENT = new http.Agent({
   maxSockets: 100,
 });
 
-// User-Agent navigateur pour passer les filtres anti-hotlinking
-const BROWSER_UA =
-  'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36';
+// User-Agent VLC pour passer les filtres anti-web des fournisseurs IPTV
+const BROWSER_UA = 'VLC/3.0.18 LibVLC/3.0.18';
 
 @Injectable()
 export class ProxyService {
@@ -122,8 +121,6 @@ export class ProxyService {
           'Accept': '*/*',
           'Accept-Language': 'fr,fr-FR;q=0.9,en-US;q=0.8,en;q=0.7',
           'Accept-Encoding': 'identity',
-          'Referer': targetOrigin + '/',
-          'Origin': targetOrigin,
           'Connection': 'keep-alive',
           ...(reqHeaders['range'] && { 'Range': reqHeaders['range'] }),
           ...(reqHeaders['cookie'] && { 'Cookie': reqHeaders['cookie'] }),
@@ -227,8 +224,6 @@ export class ProxyService {
           'Accept': '*/*',
           'Accept-Language': 'fr,fr-FR;q=0.9,en-US;q=0.8,en;q=0.7',
           'Accept-Encoding': 'identity',
-          'Referer': targetOrigin + '/',
-          'Origin': targetOrigin,
           'Connection': 'keep-alive',
         };
         if (reqHeaders['range']) headers['Range'] = reqHeaders['range'];
