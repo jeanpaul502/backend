@@ -8,6 +8,9 @@ import { json, urlencoded } from 'express';
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
 
+  // Trust the first proxy (important for getting real client IP behind Nginx/Cloudflare/etc.)
+  app.getHttpAdapter().getInstance().set('trust proxy', 1);
+
   app.use(json({ limit: '50mb' }));
   app.use(urlencoded({ limit: '50mb', extended: true }));
 

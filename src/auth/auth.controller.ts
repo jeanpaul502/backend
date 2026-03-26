@@ -36,8 +36,22 @@ export class AuthController {
       browser,
       deviceType,
     } = body;
-    const clientIp = req.headers['x-forwarded-for'] || req.socket.remoteAddress;
-    const finalIp = (ipAddress && ipAddress !== 'Unknown' && ipAddress !== '') ? ipAddress : clientIp;
+
+    // Build the final IP: prefer the IP sent by the client (from ipwho.is/ipapi.co),
+    // then fall back to req.ip (uses trust-proxy), then x-forwarded-for
+    let clientIp = req.ip || req.headers['x-forwarded-for'] || req.socket?.remoteAddress || '';
+    if (typeof clientIp === 'string' && clientIp.includes(',')) {
+      clientIp = clientIp.split(',')[0].trim();
+    }
+    // Clean up IPv6-mapped IPv4 addresses
+    if (typeof clientIp === 'string' && clientIp.startsWith('::ffff:')) {
+      clientIp = clientIp.replace('::ffff:', '');
+    }
+    if (clientIp === '::1') clientIp = '127.0.0.1';
+
+    // Use client-provided IP (from geolocation API) if it's a valid non-local IP
+    const isValidClientIp = ipAddress && ipAddress !== 'Unknown' && ipAddress !== '' && !ipAddress.startsWith('127.') && !ipAddress.startsWith('::');
+    const finalIp = isValidClientIp ? ipAddress : (clientIp || 'Unknown');
 
     return this.authService.login(req.user, {
       device,

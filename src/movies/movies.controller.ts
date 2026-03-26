@@ -8,7 +8,9 @@ import {
   Delete,
   Query,
   UseGuards,
+  Res,
 } from '@nestjs/common';
+import type { Response } from 'express';
 import { MoviesService } from './movies.service';
 import { TmdbService } from './tmdb.service';
 import { CreateMovieDto } from './dto/create-movie.dto';
@@ -42,12 +44,15 @@ export class MoviesController {
   }
 
   @Get()
-  findAll() {
+  async findAll(@Res({ passthrough: true }) res: Response) {
+    // Cache 30s pour le navigateur, 60s pour les CDN
+    res.setHeader('Cache-Control', 'public, max-age=30, s-maxage=60, stale-while-revalidate=300');
     return this.moviesService.findAll();
   }
 
   @Get(':id')
-  findOne(@Param('id') id: string) {
+  async findOne(@Param('id') id: string, @Res({ passthrough: true }) res: Response) {
+    res.setHeader('Cache-Control', 'public, max-age=60, stale-while-revalidate=300');
     return this.moviesService.findOne(id);
   }
 
