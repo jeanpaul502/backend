@@ -13,6 +13,7 @@ import {
 import type { Response } from 'express';
 import { MoviesService } from './movies.service';
 import { TmdbService } from './tmdb.service';
+import { DownloadService } from './download.service';
 import { CreateMovieDto } from './dto/create-movie.dto';
 import { UpdateMovieDto } from './dto/update-movie.dto';
 import { AuthGuard } from '@nestjs/passport';
@@ -23,6 +24,7 @@ export class MoviesController {
   constructor(
     private readonly moviesService: MoviesService,
     private readonly tmdbService: TmdbService,
+    private readonly downloadService: DownloadService,
   ) {}
 
   @Get('search/tmdb')
@@ -48,6 +50,15 @@ export class MoviesController {
     // Cache 30s pour le navigateur, 60s pour les CDN
     res.setHeader('Cache-Control', 'public, max-age=30, s-maxage=60, stale-while-revalidate=300');
     return this.moviesService.findAll();
+  }
+
+  @Get(':id/download')
+  async downloadMovie(
+    @Param('id') id: string,
+    @Query('format') format: string = 'mp4',
+    @Res() res: Response,
+  ) {
+    return this.downloadService.convertAndStream(id, format, res);
   }
 
   @Get(':id')

@@ -6,11 +6,12 @@ import { MoviesService } from './movies.service';
 import { MoviesController } from './movies.controller';
 import { Movie } from './entities/movie.entity';
 import { TmdbService } from './tmdb.service';
+import { DownloadService } from './download.service';
 
 @Module({
   imports: [TypeOrmModule.forFeature([Movie]), HttpModule, ConfigModule],
   controllers: [MoviesController],
-  providers: [MoviesService, TmdbService],
+  providers: [MoviesService, TmdbService, DownloadService],
   exports: [MoviesService],
 })
 export class MoviesModule {}
