@@ -11,14 +11,16 @@ import { Movie } from './entities/movie.entity';
 import { Response } from 'express';
 import ffmpeg from 'fluent-ffmpeg';
 import * as ffmpegInstaller from '@ffmpeg-installer/ffmpeg';
+import * as ffprobeInstaller from '@ffprobe-installer/ffprobe';
 import * as path from 'path';
 import * as fs from 'fs';
 import * as os from 'os';
 import { spawn } from 'child_process';
 import { EventsGateway } from '../events/events.gateway';
 
-// Use the bundled ffmpeg binary
+// Use the bundled ffmpeg/ffprobe binaries
 ffmpeg.setFfmpegPath(ffmpegInstaller.path);
+ffmpeg.setFfprobePath(ffprobeInstaller.path);
 
 const ALLOWED_FORMATS = ['mp4', 'mkv', 'avi'] as const;
 type AllowedFormat = (typeof ALLOWED_FORMATS)[number];
@@ -90,9 +92,23 @@ export class DownloadService {
     this.logger.log(`[Download] Phase 2 – converting to ${fmt.toUpperCase()} → ${finalPath}`);
     this.eventsGateway.emitDownloadProgress(movieId, 80, 'converting');
 
+    // Get duration for better progress calculation in Phase 2
+    const duration: number = await new Promise((res) => {
+      ffmpeg.ffprobe(rawPath, (err, metadata) => {
+        if (err || !metadata.format?.duration) return res(0);
+        res(metadata.format.duration);
+      });
+    });
+
     // Phase 2 (80% -> 100% total progress)
     await new Promise<void>((resolve, reject) => {
-      ffmpeg(rawPath)
+      const command = ffmpeg(rawPath);
+      
+      if (duration > 0) {
+        command.inputOptions(['-t', duration.toString()]);
+      }
+
+      command
         .videoCodec(codecs.vcodec)
         .audioCodec(codecs.acodec)
         .outputOptions('-preset', 'fast')
@@ -101,11 +117,19 @@ export class DownloadService {
         .output(finalPath)
         .on('start', (cmd) => this.logger.debug(`FFmpeg cmd: ${cmd}`))
         .on('progress', (p) => {
-          if (p.percent) {
-            const totalPct = 80 + Math.round(p.percent * 0.19); // map 0-100 ffmpeg to 80-99 total
+          let pct = p.percent;
+          
+          // Fallback if p.percent is undefined (common with TS files)
+          if (!pct && duration > 0 && p.timemark) {
+              const [h, m, s] = p.timemark.split(':').map(parseFloat);
+              const currentSeconds = (h * 3600) + (m * 60) + s;
+              pct = (currentSeconds / duration) * 100;
+          }
+
+          if (pct) {
+            const totalPct = 80 + Math.round(pct * 0.19); // map 0-100 ffmpeg to 80-99 total
             this.eventsGateway.emitDownloadProgress(movieId, Math.min(totalPct, 99), 'converting');
           }
-          this.logger.debug(`Progress: ${p.percent?.toFixed(1)}%`);
         })
         .on('end', () => {
           this.logger.log(`[Download] Conversion done → ${finalPath}`);
