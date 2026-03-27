@@ -74,4 +74,8 @@ export class EventsGateway
   emitMovieDeleted(id: string) {
     this.server.emit('movieDeleted', { id });
   }
+  
+  emitDownloadProgress(movieId: string, progress: number, status: string) {
+    this.server.emit('downloadProgress', { movieId, progress, status });
+  }
 }

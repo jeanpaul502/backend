@@ -15,6 +15,7 @@ import * as path from 'path';
 import * as fs from 'fs';
 import * as os from 'os';
 import { spawn } from 'child_process';
+import { EventsGateway } from '../events/events.gateway';
 
 // Use the bundled ffmpeg binary
 ffmpeg.setFfmpegPath(ffmpegInstaller.path);
@@ -39,6 +40,7 @@ export class DownloadService {
   constructor(
     @InjectRepository(Movie)
     private readonly moviesRepository: Repository<Movie>,
+    private readonly eventsGateway: EventsGateway,
   ) {}
 
   async convertAndStream(
@@ -77,19 +79,20 @@ export class DownloadService {
     // Phase 2: Output of ffmpeg format conversion
     const finalPath = path.join(tmpDir, `${sessionId}_${outputFilename}`);
 
-    this.logger.log(
-      `[Download] Phase 1 – yt-dlp fetching: ${movie.videoUrl}`,
-    );
+    this.logger.log(`[Download] Phase 1 – yt-dlp fetching: ${movie.videoUrl}`);
+    this.eventsGateway.emitDownloadProgress(movieId, 0, 'initializing');
 
-    await this.downloadWithYtDlp(movie.videoUrl, rawPath);
+    // Phase 1 (0% -> 80% total progress)
+    await this.downloadWithYtDlp(url => {
+      this.eventsGateway.emitDownloadProgress(movieId, Math.round(url * 0.8), 'downloading');
+    }, movie.videoUrl, rawPath);
 
-    this.logger.log(
-      `[Download] Phase 2 – converting to ${fmt.toUpperCase()} → ${finalPath}`,
-    );
+    this.logger.log(`[Download] Phase 2 – converting to ${fmt.toUpperCase()} → ${finalPath}`);
+    this.eventsGateway.emitDownloadProgress(movieId, 80, 'converting');
 
+    // Phase 2 (80% -> 100% total progress)
     await new Promise<void>((resolve, reject) => {
       ffmpeg(rawPath)
-        .inputOptions('-allowed_extensions', 'ALL')
         .videoCodec(codecs.vcodec)
         .audioCodec(codecs.acodec)
         .outputOptions('-preset', 'fast')
@@ -97,11 +100,16 @@ export class DownloadService {
         .outputOptions('-movflags', '+faststart')
         .output(finalPath)
         .on('start', (cmd) => this.logger.debug(`FFmpeg cmd: ${cmd}`))
-        .on('progress', (p) =>
-          this.logger.debug(`Progress: ${p.percent?.toFixed(1)}%`),
-        )
+        .on('progress', (p) => {
+          if (p.percent) {
+            const totalPct = 80 + Math.round(p.percent * 0.19); // map 0-100 ffmpeg to 80-99 total
+            this.eventsGateway.emitDownloadProgress(movieId, Math.min(totalPct, 99), 'converting');
+          }
+          this.logger.debug(`Progress: ${p.percent?.toFixed(1)}%`);
+        })
         .on('end', () => {
           this.logger.log(`[Download] Conversion done → ${finalPath}`);
+          this.eventsGateway.emitDownloadProgress(movieId, 100, 'ready');
           resolve();
         })
         .on('error', (err) => {
@@ -135,9 +143,14 @@ export class DownloadService {
    * Uses yt-dlp to download a (possibly protected) HLS stream to a local file.
    * yt-dlp handles token-signed URLs, CDN headers, and anti-bot measures.
    */
-  private downloadWithYtDlp(url: string, outputPath: string): Promise<void> {
+  private downloadWithYtDlp(
+    onProgress: (pct: number) => void,
+    url: string,
+    outputPath: string,
+  ): Promise<void> {
     return new Promise((resolve, reject) => {
       const ytDlp = spawn('yt-dlp', [
+        '--newline', // forces it to output one progress line per line
         '--no-playlist',
         '--format', 'bestvideo+bestaudio/best',  // best quality
         '--user-agent', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
@@ -148,12 +161,20 @@ export class DownloadService {
         url,
       ]);
 
-      ytDlp.stdout.on('data', (data: Buffer) =>
-        this.logger.debug(`[yt-dlp] ${data.toString().trim()}`),
-      );
-      ytDlp.stderr.on('data', (data: Buffer) =>
-        this.logger.error(`[yt-dlp] ${data.toString().trim()}`),
-      );
+      ytDlp.stdout.on('data', (data: Buffer) => {
+        const line = data.toString();
+        // Regex to match percentage in "[download]  24.5% of..."
+        const match = line.match(/\[download\]\s+(\d+\.?\d*)%/);
+        if (match && match[1]) {
+          const pct = parseFloat(match[1]);
+          onProgress(pct);
+        }
+        // No logging to console as requested by user
+      });
+
+      ytDlp.stderr.on('data', (data: Buffer) => {
+        this.logger.error(`[yt-dlp error] ${data.toString().trim()}`);
+      });
 
       ytDlp.on('close', (code) => {
         if (code === 0) {
