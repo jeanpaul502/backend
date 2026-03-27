@@ -73,12 +73,20 @@ export class DownloadService {
       `[Download] Starting conversion: ${movie.videoUrl} → ${fmt.toUpperCase()} (${tmpPath})`,
     );
 
+    // Extract origin from videoUrl to use as Referer
+    const videoOrigin = new URL(movie.videoUrl).origin;
+
     await new Promise<void>((resolve, reject) => {
       ffmpeg(movie.videoUrl)
+        // Allow all protocols needed for HLS over HTTPS
+        .inputOptions('-protocol_whitelist', 'file,http,https,tcp,tls,crypto,hls')
+        // Spoof browser-like headers so the streaming server accepts the request
+        .inputOptions('-user_agent', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36')
+        .inputOptions('-headers', `Referer: ${videoOrigin}/\r\nOrigin: ${videoOrigin}`)
         .videoCodec(codecs.vcodec)
         .audioCodec(codecs.acodec)
-        .outputOptions('-preset', 'fast')     // balance speed/quality
-        .outputOptions('-crf', '23')           // good default quality
+        .outputOptions('-preset', 'fast')        // balance speed/quality
+        .outputOptions('-crf', '23')             // good default quality
         .outputOptions('-movflags', '+faststart') // MP4: playable while downloading
         .output(tmpPath)
         .on('start', (cmd) => this.logger.debug(`FFmpeg cmd: ${cmd}`))
