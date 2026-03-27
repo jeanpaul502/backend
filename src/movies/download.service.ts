@@ -140,7 +140,6 @@ export class DownloadService {
       const ytDlp = spawn('yt-dlp', [
         '--no-playlist',
         '--format', 'bestvideo+bestaudio/best',  // best quality
-        '--merge-output-format', 'ts',           // merge into .ts container
         '--user-agent', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
         '--add-header', 'Accept-Language:fr-FR,fr;q=0.9,en-US;q=0.8',
         '--hls-prefer-native',                   // use native HLS downloader
