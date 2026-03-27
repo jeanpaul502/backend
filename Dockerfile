@@ -26,6 +26,10 @@ COPY package*.json ./
 # Installer uniquement les dépendances de production
 RUN npm install --only=production
 
+# Installer python3 + yt-dlp pour le téléchargement des flux HLS protégés
+RUN apk add --no-cache python3 py3-pip \
+  && pip3 install --no-cache-dir --break-system-packages yt-dlp
+
 # Copier les fichiers compilés depuis l'étape de build
 COPY --from=builder /app/dist ./dist
 

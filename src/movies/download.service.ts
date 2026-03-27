@@ -2,6 +2,7 @@ import {
   Injectable,
   NotFoundException,
   BadRequestException,
+  InternalServerErrorException,
   Logger,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
@@ -13,6 +14,7 @@ import * as ffmpegInstaller from '@ffmpeg-installer/ffmpeg';
 import * as path from 'path';
 import * as fs from 'fs';
 import * as os from 'os';
+import { spawn } from 'child_process';
 
 // Use the bundled ffmpeg binary
 ffmpeg.setFfmpegPath(ffmpegInstaller.path);
@@ -67,34 +69,39 @@ export class DownloadService {
     const codecs = FORMAT_CODECS[fmt];
     const safeTitle = movie.title.replace(/[^a-zA-Z0-9_-]/g, '_');
     const outputFilename = `${safeTitle}.${fmt}`;
-    const tmpPath = path.join(os.tmpdir(), `cineo_${Date.now()}_${outputFilename}`);
+    const tmpDir = os.tmpdir();
+    const sessionId = `cineo_${Date.now()}`;
+
+    // Phase 1: Download the raw stream using yt-dlp (handles DRM-protected HLS)
+    const rawPath = path.join(tmpDir, `${sessionId}_raw.ts`);
+    // Phase 2: Output of ffmpeg format conversion
+    const finalPath = path.join(tmpDir, `${sessionId}_${outputFilename}`);
 
     this.logger.log(
-      `[Download] Starting conversion: ${movie.videoUrl} → ${fmt.toUpperCase()} (${tmpPath})`,
+      `[Download] Phase 1 – yt-dlp fetching: ${movie.videoUrl}`,
     );
 
-    // Extract origin from videoUrl to use as Referer
-    const videoOrigin = new URL(movie.videoUrl).origin;
+    await this.downloadWithYtDlp(movie.videoUrl, rawPath);
+
+    this.logger.log(
+      `[Download] Phase 2 – converting to ${fmt.toUpperCase()} → ${finalPath}`,
+    );
 
     await new Promise<void>((resolve, reject) => {
-      ffmpeg(movie.videoUrl)
-        // Allow all protocols needed for HLS over HTTPS
-        .inputOptions('-protocol_whitelist', 'file,http,https,tcp,tls,crypto,hls')
-        // Spoof browser-like headers so the streaming server accepts the request
-        .inputOptions('-user_agent', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36')
-        .inputOptions('-headers', `Referer: ${videoOrigin}/\r\nOrigin: ${videoOrigin}`)
+      ffmpeg(rawPath)
+        .inputOptions('-allowed_extensions', 'ALL')
         .videoCodec(codecs.vcodec)
         .audioCodec(codecs.acodec)
-        .outputOptions('-preset', 'fast')        // balance speed/quality
-        .outputOptions('-crf', '23')             // good default quality
-        .outputOptions('-movflags', '+faststart') // MP4: playable while downloading
-        .output(tmpPath)
+        .outputOptions('-preset', 'fast')
+        .outputOptions('-crf', '23')
+        .outputOptions('-movflags', '+faststart')
+        .output(finalPath)
         .on('start', (cmd) => this.logger.debug(`FFmpeg cmd: ${cmd}`))
         .on('progress', (p) =>
           this.logger.debug(`Progress: ${p.percent?.toFixed(1)}%`),
         )
         .on('end', () => {
-          this.logger.log(`[Download] Conversion done → ${tmpPath}`);
+          this.logger.log(`[Download] Conversion done → ${finalPath}`);
           resolve();
         })
         .on('error', (err) => {
@@ -104,20 +111,75 @@ export class DownloadService {
         .run();
     });
 
+    // Clean up raw download
+    try { fs.unlinkSync(rawPath); } catch (_) { /* ignore */ }
+
     // --- Stream the converted file to the client ---
-    const stat = fs.statSync(tmpPath);
+    const stat = fs.statSync(finalPath);
     res.set({
       'Content-Type': this.getMimeType(fmt),
       'Content-Disposition': `attachment; filename="${outputFilename}"`,
       'Content-Length': stat.size.toString(),
     });
 
-    const fileStream = fs.createReadStream(tmpPath);
+    const fileStream = fs.createReadStream(finalPath);
     fileStream.pipe(res);
 
-    // Clean up tmp file after streaming
+    // Clean up final file after streaming
     fileStream.on('close', () => {
-      try { fs.unlinkSync(tmpPath); } catch (_) { /* ignore */ }
+      try { fs.unlinkSync(finalPath); } catch (_) { /* ignore */ }
+    });
+  }
+
+  /**
+   * Uses yt-dlp to download a (possibly protected) HLS stream to a local file.
+   * yt-dlp handles token-signed URLs, CDN headers, and anti-bot measures.
+   */
+  private downloadWithYtDlp(url: string, outputPath: string): Promise<void> {
+    return new Promise((resolve, reject) => {
+      const ytDlp = spawn('yt-dlp', [
+        '--no-playlist',
+        '--format', 'bestvideo+bestaudio/best',  // best quality
+        '--merge-output-format', 'ts',           // merge into .ts container
+        '--user-agent', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
+        '--add-header', 'Accept-Language:fr-FR,fr;q=0.9,en-US;q=0.8',
+        '--hls-prefer-native',                   // use native HLS downloader
+        '--no-warnings',
+        '-o', outputPath,
+        url,
+      ]);
+
+      ytDlp.stdout.on('data', (data: Buffer) =>
+        this.logger.debug(`[yt-dlp] ${data.toString().trim()}`),
+      );
+      ytDlp.stderr.on('data', (data: Buffer) =>
+        this.logger.error(`[yt-dlp] ${data.toString().trim()}`),
+      );
+
+      ytDlp.on('close', (code) => {
+        if (code === 0) {
+          resolve();
+        } else {
+          reject(
+            new InternalServerErrorException(
+              `yt-dlp a échoué avec le code ${code}. Le flux vidéo est peut-être protégé ou non disponible.`,
+            ),
+          );
+        }
+      });
+
+      ytDlp.on('error', (err) => {
+        // yt-dlp not installed
+        if ((err as NodeJS.ErrnoException).code === 'ENOENT') {
+          reject(
+            new InternalServerErrorException(
+              'yt-dlp est introuvable. Installez-le sur le serveur : pip install yt-dlp',
+            ),
+          );
+        } else {
+          reject(err);
+        }
+      });
     });
   }
 
