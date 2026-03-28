@@ -8,8 +8,8 @@ import { json, urlencoded } from 'express';
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
 
-  // Trust the first proxy (important for getting real client IP behind Nginx/Cloudflare/etc.)
-  app.getHttpAdapter().getInstance().set('trust proxy', 1);
+  // Trust proxies (required to get real client IP behind Nginx/Cloudflare/etc.)
+  app.getHttpAdapter().getInstance().set('trust proxy', true);
 
   app.use(json({ limit: '50mb' }));
   app.use(urlencoded({ limit: '50mb', extended: true }));
@@ -32,9 +32,14 @@ async function bootstrap() {
     origin: true, // Reflète l'origine de la requête (indispensable pour credentials: true)
     methods: 'GET,HEAD,PUT,PATCH,POST,DELETE,OPTIONS',
     credentials: true,
-    exposedHeaders: ['Authorization'], // Permet au frontend de voir le header Authorization
+    exposedHeaders: [
+      'Authorization',
+      'Content-Disposition',
+      'Content-Length',
+      'X-Estimated-Bytes',
+    ],
   });
-  
+
   // Important pour les plateformes de déploiement (Koyeb, Render, Railway, Dokploy, etc.)
   // On privilégie le port 3000 par défaut car c'est le standard pour beaucoup de plateformes.
   const port = process.env.PORT || 3000;

@@ -48,7 +48,10 @@ export class MoviesController {
   @Get()
   async findAll(@Res({ passthrough: true }) res: Response) {
     // Cache 30s pour le navigateur, 60s pour les CDN
-    res.setHeader('Cache-Control', 'public, max-age=30, s-maxage=60, stale-while-revalidate=300');
+    res.setHeader(
+      'Cache-Control',
+      'public, max-age=30, s-maxage=60, stale-while-revalidate=300',
+    );
     return this.moviesService.findAll();
   }
 
@@ -62,8 +65,14 @@ export class MoviesController {
   }
 
   @Get(':id')
-  async findOne(@Param('id') id: string, @Res({ passthrough: true }) res: Response) {
-    res.setHeader('Cache-Control', 'public, max-age=60, stale-while-revalidate=300');
+  async findOne(
+    @Param('id') id: string,
+    @Res({ passthrough: true }) res: Response,
+  ) {
+    res.setHeader(
+      'Cache-Control',
+      'public, max-age=60, stale-while-revalidate=300',
+    );
     return this.moviesService.findOne(id);
   }
 

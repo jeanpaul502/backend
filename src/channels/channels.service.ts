@@ -289,8 +289,8 @@ export class ChannelsService {
     }> = [];
 
     const lines = content.split(/\r?\n/);
-    let currentName  = '';
-    let currentLogo  = '';
+    let currentName = '';
+    let currentLogo = '';
     let currentGroup = '';
 
     for (const rawLine of lines) {
@@ -300,13 +300,13 @@ export class ChannelsService {
       if (line.startsWith('#EXTINF:')) {
         // Nom : tout ce qui suit la dernière virgule
         const nameMatch = line.match(/,([^,]+)$/);
-        currentName  = nameMatch ? this.cleanChannelName(nameMatch[1].trim()) : '';
-        currentLogo  = this.extractAttr(line, 'tvg-logo');
+        currentName = nameMatch
+          ? this.cleanChannelName(nameMatch[1].trim())
+          : '';
+        currentLogo = this.extractAttr(line, 'tvg-logo');
         currentGroup = this.extractAttr(line, 'group-title');
-
       } else if (line.startsWith('#')) {
         continue; // Autre directive M3U — ignorer
-
       } else if (
         line.startsWith('http://') ||
         line.startsWith('https://') ||
@@ -315,14 +315,14 @@ export class ChannelsService {
       ) {
         if (currentName) {
           channels.push({
-            name:  currentName,
-            url:   line.split(' ')[0], // ignorer les paramètres en ligne
-            logo:  currentLogo  || undefined,
+            name: currentName,
+            url: line.split(' ')[0], // ignorer les paramètres en ligne
+            logo: currentLogo || undefined,
             group: currentGroup || undefined,
           });
         }
-        currentName  = '';
-        currentLogo  = '';
+        currentName = '';
+        currentLogo = '';
         currentGroup = '';
       }
     }
@@ -362,4 +362,3 @@ export class ChannelsService {
       .trim();
   }
 }
-

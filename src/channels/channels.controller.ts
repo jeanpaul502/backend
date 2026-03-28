@@ -15,7 +15,7 @@ import { UpdatePlaylistDto } from './dto/update-playlist.dto';
 
 @Controller('channels')
 export class ChannelsController {
-  constructor(private readonly channelsService: ChannelsService) { }
+  constructor(private readonly channelsService: ChannelsService) {}
 
   // --- Playlists ---
 
@@ -53,10 +53,7 @@ export class ChannelsController {
    * Résoud les erreurs CORS et les limites du navigateur.
    */
   @Post('playlists/:id/import-m3u')
-  importM3U(
-    @Param('id') playlistId: string,
-    @Body() body: { m3uUrl: string },
-  ) {
+  importM3U(@Param('id') playlistId: string, @Body() body: { m3uUrl: string }) {
     return this.channelsService.importM3U(playlistId, body.m3uUrl);
   }
 

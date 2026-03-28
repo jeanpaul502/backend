@@ -26,7 +26,7 @@ export class SubscriptionsService implements OnModuleInit {
           price: 0,
           durationMonths: null,
           description: 'Accès gratuit',
-        }
+        },
       ];
       await this.subscriptionRepository.save(plans);
       console.log('Subscriptions seeded');

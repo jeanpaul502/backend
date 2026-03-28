@@ -31,7 +31,7 @@ const BROWSER_UA = 'VLC/3.0.18 LibVLC/3.0.18';
 export class ProxyService {
   private readonly logger = new Logger(ProxyService.name);
 
-  constructor(private readonly httpService: HttpService) { }
+  constructor(private readonly httpService: HttpService) {}
 
   async handleProxyRequest(
     url: string,
@@ -63,7 +63,10 @@ export class ProxyService {
     // ── Détection du type de ressource ────────────────────────────────────────
     const urlPath = url.split('?')[0].toLowerCase();
     const isM3u8Url = urlPath.endsWith('.m3u8') || urlPath.includes('.m3u8.');
-    const isSegment = urlPath.endsWith('.ts') || urlPath.endsWith('.m4s') || urlPath.endsWith('.aac');
+    const isSegment =
+      urlPath.endsWith('.ts') ||
+      urlPath.endsWith('.m4s') ||
+      urlPath.endsWith('.aac');
 
     // ──────────────────────────────────────────────────────────────────────────
     // SEGMENTS .ts / .m4s : Pipe natif Node.js (zéro overhead Axios)
@@ -80,7 +83,14 @@ export class ProxyService {
     // MANIFESTES .m3u8 : Axios (on a besoin de lire et réécrire le contenu)
     // ──────────────────────────────────────────────────────────────────────────
     return this.handleM3u8Request(
-      url, reqHeaders, res, host, protocol, token, rewriteM3u8, targetOrigin,
+      url,
+      reqHeaders,
+      res,
+      host,
+      protocol,
+      token,
+      rewriteM3u8,
+      targetOrigin,
     );
   }
 
@@ -118,13 +128,13 @@ export class ProxyService {
         agent,
         headers: {
           'User-Agent': BROWSER_UA,
-          'Accept': '*/*',
+          Accept: '*/*',
           'Accept-Language': 'fr,fr-FR;q=0.9,en-US;q=0.8,en;q=0.7',
           'Accept-Encoding': 'identity',
-          'Connection': 'keep-alive',
-          ...(reqHeaders['range'] && { 'Range': reqHeaders['range'] }),
-          ...(reqHeaders['cookie'] && { 'Cookie': reqHeaders['cookie'] }),
-          ...(token && { 'Authorization': `Bearer ${token}` }),
+          Connection: 'keep-alive',
+          ...(reqHeaders['range'] && { Range: reqHeaders['range'] }),
+          ...(reqHeaders['cookie'] && { Cookie: reqHeaders['cookie'] }),
+          ...(token && { Authorization: `Bearer ${token}` }),
         },
       };
 
@@ -135,8 +145,12 @@ export class ProxyService {
 
         // Forward des headers utiles pour le streaming
         const fwd = [
-          'content-type', 'content-length', 'content-range',
-          'accept-ranges', 'etag', 'last-modified',
+          'content-type',
+          'content-length',
+          'content-range',
+          'accept-ranges',
+          'etag',
+          'last-modified',
         ];
         for (const key of fwd) {
           const val = proxyRes.headers[key];
@@ -174,7 +188,9 @@ export class ProxyService {
             err.message.includes('closed');
 
           if (!isNormal) {
-            this.logger.debug(`Segment stream interrupted [${url.split('/').pop()}]: ${err.message}`);
+            this.logger.debug(
+              `Segment stream interrupted [${url.split('/').pop()}]: ${err.message}`,
+            );
           }
           resolve();
         });
@@ -190,7 +206,9 @@ export class ProxyService {
       proxyReq.on('error', (err) => {
         // Ignoré si ECONNRESET (client a fermé avant la fin — normal sur live)
         if ((err as any).code !== 'ECONNRESET') {
-          this.logger.debug(`Segment request error [${url.split('/').pop()}]: ${err.message}`);
+          this.logger.debug(
+            `Segment request error [${url.split('/').pop()}]: ${err.message}`,
+          );
         }
         if (!res.headersSent) res.status(502).end();
         resolve();
@@ -199,7 +217,6 @@ export class ProxyService {
       proxyReq.end();
     });
   }
-
 
   // Manifestes M3U8 : Axios + réécriture des URLs de segments
   private async handleM3u8Request(
@@ -221,10 +238,10 @@ export class ProxyService {
       try {
         const headers: Record<string, string> = {
           'User-Agent': BROWSER_UA,
-          'Accept': '*/*',
+          Accept: '*/*',
           'Accept-Language': 'fr,fr-FR;q=0.9,en-US;q=0.8,en;q=0.7',
           'Accept-Encoding': 'identity',
-          'Connection': 'keep-alive',
+          Connection: 'keep-alive',
         };
         if (reqHeaders['range']) headers['Range'] = reqHeaders['range'];
         if (reqHeaders['cookie']) headers['Cookie'] = reqHeaders['cookie'];
@@ -247,17 +264,18 @@ export class ProxyService {
         attempt++;
         if (attempt <= maxRetries) {
           const delay = 500 * Math.pow(2, attempt - 1);
-          await new Promise(r => setTimeout(r, delay));
+          await new Promise((r) => setTimeout(r, delay));
         }
       } catch (err) {
         lastError = err;
         attempt++;
-        if (attempt <= maxRetries) await new Promise(r => setTimeout(r, 500));
+        if (attempt <= maxRetries) await new Promise((r) => setTimeout(r, 500));
       }
     }
 
     if (!response) {
-      const msg = lastError instanceof Error ? lastError.message : String(lastError);
+      const msg =
+        lastError instanceof Error ? lastError.message : String(lastError);
       this.logger.error(`M3U8 proxy failed for ${url}: ${msg}`);
       return res.status(502).send('Proxy Error: Upstream unavailable.');
     }
@@ -267,8 +285,12 @@ export class ProxyService {
       const contentType = response.headers['content-type'] || '';
       const urlPath = url.split('?')[0].toLowerCase();
 
-      const isM3u8Content = contentType.includes('mpegurl') || contentType.includes('x-mpegURL');
-      const isM3u8 = urlPath.endsWith('.m3u8') || urlPath.includes('.m3u8.') || isM3u8Content;
+      const isM3u8Content =
+        contentType.includes('mpegurl') || contentType.includes('x-mpegURL');
+      const isM3u8 =
+        urlPath.endsWith('.m3u8') ||
+        urlPath.includes('.m3u8.') ||
+        isM3u8Content;
 
       res.status(resStatus);
       res.setHeader('Content-Type', 'application/vnd.apple.mpegurl');
@@ -281,15 +303,17 @@ export class ProxyService {
       res.setHeader('Access-Control-Allow-Private-Network', 'true');
       res.setHeader('Vary', 'Origin');
 
-      const shouldRewrite = rewriteM3u8 && isM3u8 && resStatus >= 200 && resStatus < 300;
-
+      const shouldRewrite =
+        rewriteM3u8 && isM3u8 && resStatus >= 200 && resStatus < 300;
 
       if (shouldRewrite) {
         const stream: Readable = response.data;
         const text = await new Promise<string>((resolve, reject) => {
           const chunks: Buffer[] = [];
           stream.on('data', (c: Buffer) => chunks.push(c));
-          stream.on('end', () => resolve(Buffer.concat(chunks).toString('utf-8')));
+          stream.on('end', () =>
+            resolve(Buffer.concat(chunks).toString('utf-8')),
+          );
           stream.on('error', reject);
         });
 
@@ -298,24 +322,24 @@ export class ProxyService {
         const isLikelyM3u8 =
           trimmed.startsWith('#EXTM3U') ||
           trimmed.startsWith('#EXT-X-') ||
-          (trimmed.includes('#EXT') && (trimmed.includes('.ts') || trimmed.includes('.m3u8')));
+          (trimmed.includes('#EXT') &&
+            (trimmed.includes('.ts') || trimmed.includes('.m3u8')));
 
         const finalUrl = (response as any).request?.res?.responseUrl || url;
         const baseUrl = new URL(finalUrl);
         const tokenParam = token ? `&token=${encodeURIComponent(token)}` : '';
 
-
-
         const buildProxiedUrl = (absUrl: string): string => {
           const lower = absUrl.toLowerCase().split('?')[0];
-          const isChildM3u8 = lower.endsWith('.m3u8') || lower.includes('.m3u8.');
+          const isChildM3u8 =
+            lower.endsWith('.m3u8') || lower.includes('.m3u8.');
           const endpoint = isChildM3u8 ? 'proxy/m3u8' : 'proxy';
           return `${protocol}://${host}/${endpoint}?url=${encodeURIComponent(absUrl)}${tokenParam}`;
         };
 
         const rewritten = text
           .split('\n')
-          .map(rawLine => {
+          .map((rawLine) => {
             const line = rawLine.trimEnd();
             const trimLine = line.trim();
             if (!trimLine) return line;
@@ -326,9 +350,10 @@ export class ProxyService {
                 if (uri.startsWith('data:')) return _m;
                 try {
                   const absoluteUri = new URL(uri, baseUrl).toString();
-                  return `URI="${buildProxiedUrl(absoluteUri)}"`
+                  return `URI="${buildProxiedUrl(absoluteUri)}"`;
+                } catch {
+                  return _m;
                 }
-                catch { return _m; }
               });
             }
 
@@ -336,8 +361,9 @@ export class ProxyService {
             try {
               const absoluteUri = new URL(trimLine, baseUrl).toString();
               return buildProxiedUrl(absoluteUri);
+            } catch {
+              return line;
             }
-            catch { return line; }
           })
           .join('\n');
 
@@ -347,18 +373,22 @@ export class ProxyService {
       // Pas de réécriture : streamer le manifeste tel quel
       return await new Promise<void>((resolve, reject) => {
         res.on('close', () => {
-          try { (response!.data as any).destroy(); } catch { /* noop */ }
+          try {
+            (response.data as any).destroy();
+          } catch {
+            /* noop */
+          }
         });
-        pipeline(response!.data, res, (err) => {
+        pipeline(response.data, res, (err) => {
           if (!err) return resolve();
-          const benign = err.code === 'ERR_STREAM_PREMATURE_CLOSE' ||
+          const benign =
+            err.code === 'ERR_STREAM_PREMATURE_CLOSE' ||
             err.code === 'ECONNRESET';
           if (benign) return resolve();
           this.logger.debug(`M3U8 stream error for ${url}: ${err.message}`);
           reject(err);
         });
       });
-
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : String(err);
       this.logger.error(`M3U8 processing error for ${url}: ${msg}`);

@@ -16,17 +16,23 @@ export class RequestsService {
     return this.requestsRepository.save(request);
   }
 
-  findAll() {
-    return this.requestsRepository.find();
+  findAllAdmin() {
+    return this.requestsRepository.find({
+      relations: { user: true },
+      order: { createdAt: 'DESC' },
+    });
   }
 
   findOne(id: string) {
     return this.requestsRepository.findOneBy({ id });
   }
 
-  async update(id: string, updateRequestDto: Partial<CreateRequestDto>) {
+  async update(id: string, updateRequestDto: Partial<MediaRequest>) {
     await this.requestsRepository.update(id, updateRequestDto);
-    return this.findOne(id);
+    return this.requestsRepository.findOne({
+      where: { id },
+      relations: { user: true },
+    });
   }
 
   remove(id: string) {

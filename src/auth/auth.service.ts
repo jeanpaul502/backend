@@ -46,15 +46,7 @@ export class AuthService {
 
     // 3. Update session with token
     if (session) {
-      // Re-save with token. Since we use upsert logic in createSession based on deviceId,
-      // we can call it again or we should have a specific update method.
-      // However, since we have the session object, let's just use a direct update if possible
-      // or call createSession again.
-      // To be safe and consistent with the new upsert logic:
-      await this.usersService.createSession(user.id, {
-        deviceId: sessionData.deviceId,
-        token: token,
-      });
+      await this.usersService.updateSessionToken(session.id, user.id, token);
     }
 
     return {

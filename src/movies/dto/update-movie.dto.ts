@@ -1,6 +1,14 @@
 import { PartialType } from '@nestjs/mapped-types';
 import { CreateMovieDto } from './create-movie.dto';
-import { IsOptional, IsString, IsNumber, IsBoolean, IsArray, IsIn, IsDateString } from 'class-validator';
+import {
+  IsOptional,
+  IsString,
+  IsNumber,
+  IsBoolean,
+  IsArray,
+  IsIn,
+  IsDateString,
+} from 'class-validator';
 
 export class UpdateMovieDto extends PartialType(CreateMovieDto) {
   @IsOptional()
@@ -44,4 +52,3 @@ export class UpdateMovieDto extends PartialType(CreateMovieDto) {
   @IsDateString()
   updatedAt?: string;
 }
-

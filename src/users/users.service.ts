@@ -376,7 +376,10 @@ export class UsersService {
     }
 
     // Filter out countryCode from sessionData before passing to merge/create
-    const { countryCode, ...sessionFields } = sessionData;
+    const { countryCode, ...sessionFieldsRaw } = sessionData;
+    const sessionFields = Object.fromEntries(
+      Object.entries(sessionFieldsRaw).filter(([, v]) => v !== undefined),
+    ) as Partial<Session>;
 
     if (session) {
       // Update existing session
@@ -392,7 +395,7 @@ export class UsersService {
 
     // Update User with latest session info
     user.lastActive = new Date();
-    
+
     // Handle IP address - extract first one if it's a list (common with proxies)
     let ip = sessionData.ipAddress;
     if (ip && ip.includes(',')) {
@@ -407,26 +410,40 @@ export class UsersService {
     if (countryCode) user.lastCountryCode = countryCode;
     if (sessionData.city) user.lastCity = sessionData.city;
 
-    // Improved Device Construction
-    // If we have a specific device name (like "iPhone 13"), use it.
-    // Ensure we don't just say "Ordinateur" if we have OS/Browser info.
-    let deviceString = sessionData.device || 'Inconnu';
-    
-    const isGeneric = ['Ordinateur', 'Téléphone', 'Tablette', 'Inconnu', 'Unknown'].includes(deviceString);
-    
-    if (isGeneric && sessionData.os && sessionData.browser) {
-      deviceString = `${sessionData.browser} (${sessionData.os})`;
-    } else if (isGeneric && sessionData.os) {
-      deviceString = sessionData.os;
-    } else if (isGeneric && sessionData.browser) {
-      deviceString = sessionData.browser;
+    // Ne pas écraser lastDevice avec "Inconnu" lors d'un simple update de token.
+    const hasAnyDeviceInfo =
+      !!sessionData.device || !!sessionData.os || !!sessionData.browser;
+    if (hasAnyDeviceInfo) {
+      let deviceString = sessionData.device || 'Inconnu';
+      const isGeneric = [
+        'Ordinateur',
+        'Téléphone',
+        'Tablette',
+        'Inconnu',
+        'Unknown',
+      ].includes(deviceString);
+
+      if (isGeneric && sessionData.os && sessionData.browser) {
+        deviceString = `${sessionData.browser} (${sessionData.os})`;
+      } else if (isGeneric && sessionData.os) {
+        deviceString = sessionData.os;
+      } else if (isGeneric && sessionData.browser) {
+        deviceString = sessionData.browser;
+      }
+
+      user.lastDevice = deviceString;
     }
-    
-    user.lastDevice = deviceString;
 
     await this.usersRepository.save(user);
 
     return this.sessionsRepository.save(session);
+  }
+
+  async updateSessionToken(sessionId: number, userId: string, token: string) {
+    await this.sessionsRepository.update(
+      { id: sessionId, user: { id: userId } },
+      { token },
+    );
   }
 
   async updateLastActive(userId: string) {

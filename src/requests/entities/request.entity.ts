@@ -4,7 +4,10 @@ import {
   Column,
   CreateDateColumn,
   UpdateDateColumn,
+  ManyToOne,
+  JoinColumn,
 } from 'typeorm';
+import { User } from '../../users/entities/user.entity';
 
 export type RequestType = 'movie' | 'series' | 'tv_channel';
 export type RequestStatus = 'pending' | 'approved' | 'rejected';
@@ -55,6 +58,10 @@ export class MediaRequest {
 
   @Column({ nullable: true })
   userId: string;
+
+  @ManyToOne(() => User, { nullable: true })
+  @JoinColumn({ name: 'userId' })
+  user?: User | null;
 
   @CreateDateColumn()
   createdAt: Date;
