@@ -32,7 +32,10 @@ export class RequestsController {
 
   @Post()
   @UseGuards(AuthGuard('jwt'))
-  create(@Body() createRequestDto: CreateRequestDto, @Req() req: AuthedRequest) {
+  create(
+    @Body() createRequestDto: CreateRequestDto,
+    @Req() req: AuthedRequest,
+  ) {
     const userId = String(req.user?.userId || '');
     return this.requestsService.create({
       ...createRequestDto,

@@ -78,4 +78,8 @@ export class EventsGateway
   emitDownloadProgress(movieId: string, progress: number, status: string) {
     this.server.emit('downloadProgress', { movieId, progress, status });
   }
+
+  emitUserUpdated(userId: string, user: any) {
+    this.server.to(`user_${userId}`).emit('userUpdated', user);
+  }
 }

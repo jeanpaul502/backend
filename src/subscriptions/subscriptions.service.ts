@@ -3,6 +3,7 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { Subscription } from './entities/subscription.entity';
 import { UsersService } from '../users/users.service';
+import { EventsGateway } from '../events/events.gateway';
 
 @Injectable()
 export class SubscriptionsService implements OnModuleInit {
@@ -10,6 +11,7 @@ export class SubscriptionsService implements OnModuleInit {
     @InjectRepository(Subscription)
     private subscriptionRepository: Repository<Subscription>,
     private usersService: UsersService,
+    private eventsGateway: EventsGateway,
   ) {}
 
   async onModuleInit() {
@@ -71,6 +73,10 @@ export class SubscriptionsService implements OnModuleInit {
       subscriptionEndDate: endDate,
     });
 
-    return this.usersService.findOne(userId);
+    const updated = await this.usersService.findOne(userId);
+    if (updated) {
+      this.eventsGateway.emitUserUpdated(userId, updated);
+    }
+    return updated;
   }
 }
