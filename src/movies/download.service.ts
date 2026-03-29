@@ -190,12 +190,7 @@ export class DownloadService {
     const ytDlpProgress = this.createLineParser((line) => {
       const match = line.match(/\[download\]\s+(\d+\.?\d*)%/);
       if (match?.[1]) {
-        const pct = Math.max(0, Math.min(100, parseFloat(match[1])));
-        this.eventsGateway.emitDownloadProgress(
-          movieId,
-          Math.round(pct * 0.8),
-          'downloading',
-        );
+        this.eventsGateway.emitDownloadProgress(movieId, 0, 'downloading');
       }
     });
 
@@ -207,10 +202,7 @@ export class DownloadService {
           0,
           Math.min(100, (ms / 1_000_000 / durationSeconds) * 100),
         );
-        const totalPct =
-          mode === 'yt-dlp'
-            ? 80 + Math.round(pct * 0.19)
-            : Math.round(pct * 0.99);
+        const totalPct = Math.round(pct * 0.99);
         this.eventsGateway.emitDownloadProgress(
           movieId,
           Math.min(totalPct, 99),
