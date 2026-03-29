@@ -17,6 +17,7 @@ import { UserActivityInterceptor } from './users/user-activity.interceptor';
 import { RequestsModule } from './requests/requests.module';
 import { ThrottlerModule, ThrottlerGuard } from '@nestjs/throttler';
 import { APP_GUARD } from '@nestjs/core';
+import { FavoritesModule } from './favorites/favorites.module';
 
 @Module({
   imports: [
@@ -44,6 +45,7 @@ import { APP_GUARD } from '@nestjs/core';
     ProxyModule,
     ChannelsModule,
     RequestsModule,
+    FavoritesModule,
   ],
   controllers: [AppController],
   providers: [
