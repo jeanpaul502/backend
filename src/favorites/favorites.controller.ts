@@ -1,4 +1,12 @@
-import { Controller, Delete, Get, Param, Post, Request, UseGuards } from '@nestjs/common';
+import {
+  Controller,
+  Delete,
+  Get,
+  Param,
+  Post,
+  Request,
+  UseGuards,
+} from '@nestjs/common';
 import { AuthGuard } from '@nestjs/passport';
 import { FavoritesService } from './favorites.service';
 
@@ -27,4 +35,3 @@ export class FavoritesController {
     return this.favoritesService.removeFavorite(req.user.userId, movieId);
   }
 }
-

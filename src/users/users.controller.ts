@@ -14,15 +14,11 @@ import { UsersService } from './users.service';
 import { CreateUserDto } from './dto/create-user.dto';
 import { UpdateUserDto } from './dto/update-user.dto';
 import { AuthGuard } from '@nestjs/passport';
-import { EventsGateway } from '../events/events.gateway';
 
 @Controller('users')
 @UseGuards(AuthGuard('jwt'))
 export class UsersController {
-  constructor(
-    private readonly usersService: UsersService,
-    private readonly eventsGateway: EventsGateway,
-  ) {}
+  constructor(private readonly usersService: UsersService) {}
 
   @Post('heartbeat')
   async heartbeat(@Request() req: any) {
@@ -56,9 +52,6 @@ export class UsersController {
   @Patch(':id')
   async update(@Param('id') id: string, @Body() updateUserDto: UpdateUserDto) {
     const updated = await this.usersService.update(id, updateUserDto);
-    if (updated) {
-      this.eventsGateway.emitUserUpdated(id, updated);
-    }
     return updated;
   }
 

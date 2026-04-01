@@ -9,7 +9,6 @@ import { AuthModule } from './auth/auth.module';
 import { SubscriptionsModule } from './subscriptions/subscriptions.module';
 import { MailModule } from './mail/mail.module';
 import { MoviesModule } from './movies/movies.module';
-import { EventsModule } from './events/events.module';
 import { ProxyModule } from './proxy/proxy.module';
 import { ChannelsModule } from './channels/channels.module';
 import { databaseConfig } from './config/database.config';
@@ -18,6 +17,7 @@ import { RequestsModule } from './requests/requests.module';
 import { ThrottlerModule, ThrottlerGuard } from '@nestjs/throttler';
 import { APP_GUARD } from '@nestjs/core';
 import { FavoritesModule } from './favorites/favorites.module';
+import { AnnouncementsModule } from './announcements/announcements.module';
 
 @Module({
   imports: [
@@ -41,11 +41,11 @@ import { FavoritesModule } from './favorites/favorites.module';
     SubscriptionsModule,
     MailModule,
     MoviesModule,
-    EventsModule,
     ProxyModule,
     ChannelsModule,
     RequestsModule,
     FavoritesModule,
+    AnnouncementsModule,
   ],
   controllers: [AppController],
   providers: [

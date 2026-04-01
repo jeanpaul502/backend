@@ -4,14 +4,12 @@ import { Repository } from 'typeorm';
 import { CreateMovieDto } from './dto/create-movie.dto';
 import { UpdateMovieDto } from './dto/update-movie.dto';
 import { Movie } from './entities/movie.entity';
-import { EventsGateway } from '../events/events.gateway';
 
 @Injectable()
 export class MoviesService {
   constructor(
     @InjectRepository(Movie)
     private moviesRepository: Repository<Movie>,
-    private eventsGateway: EventsGateway,
   ) {}
 
   async create(createMovieDto: CreateMovieDto) {
@@ -30,7 +28,6 @@ export class MoviesService {
       await this.enforceTop10Limit();
     }
 
-    this.eventsGateway.emitMovieCreated(savedMovie);
     return savedMovie;
   }
 
@@ -50,9 +47,6 @@ export class MoviesService {
       await this.enforceTop10Limit();
     }
 
-    if (updated) {
-      this.eventsGateway.emitMovieUpdated(updated);
-    }
     return updated;
   }
 
@@ -67,16 +61,12 @@ export class MoviesService {
       for (const movie of toRemove) {
         await this.moviesRepository.update(movie.id, { isTop10: false });
         const fix = await this.findOne(movie.id);
-        if (fix) {
-          this.eventsGateway.emitMovieUpdated(fix);
-        }
       }
     }
   }
 
   async remove(id: string) {
     const res = await this.moviesRepository.delete(id);
-    this.eventsGateway.emitMovieDeleted(id);
     return res;
   }
 }

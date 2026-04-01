@@ -12,7 +12,6 @@ import { Response } from 'express';
 import * as ffmpegInstaller from '@ffmpeg-installer/ffmpeg';
 import * as ffprobeInstaller from '@ffprobe-installer/ffprobe';
 import { spawn, spawnSync } from 'child_process';
-import { EventsGateway } from '../events/events.gateway';
 
 const ALLOWED_FORMATS = ['mp4', 'mkv', 'avi'] as const;
 type AllowedFormat = (typeof ALLOWED_FORMATS)[number];
@@ -36,6 +35,7 @@ const FALLBACK_OUTPUT_BITRATE: Record<AllowedFormat, number> = {
 @Injectable()
 export class DownloadService {
   private readonly logger = new Logger(DownloadService.name);
+  private progressMap = new Map<string, { progress: number; status: string }>();
   private readonly downloadDebug =
     String(process.env.DOWNLOAD_DEBUG || '').toLowerCase() === 'true' ||
     String(process.env.DOWNLOAD_DEBUG || '') === '1';
@@ -43,14 +43,16 @@ export class DownloadService {
   constructor(
     @InjectRepository(Movie)
     private readonly moviesRepository: Repository<Movie>,
-    private readonly eventsGateway: EventsGateway,
   ) {}
 
   async convertAndStream(
     movieId: string,
     format: string,
     res: Response,
+    userId?: string,
   ): Promise<void> {
+    const trackingId = userId ? `${movieId}_${userId}` : movieId;
+    this.progressMap.set(trackingId, { progress: 0, status: 'initializing' });
     const fmt = format.toLowerCase() as AllowedFormat;
     if (!ALLOWED_FORMATS.includes(fmt)) {
       throw new BadRequestException(
@@ -112,7 +114,6 @@ export class DownloadService {
         )}s metadataDuration=${Math.round(metadataDurationSeconds)}s effectiveDuration=${Math.round(durationSeconds)}s estimatedBytes=${estimatedBytes}`,
       );
     }
-    this.eventsGateway.emitDownloadProgress(movieId, 0, 'initializing');
 
     res.set({
       'Content-Type': this.getMimeType(fmt),
@@ -170,6 +171,7 @@ export class DownloadService {
 
     let closedByClient = false;
     const cleanup = () => {
+      this.progressMap.delete(trackingId);
       if (ytDlp && !ytDlp.killed) {
         try {
           ytDlp.kill('SIGKILL');
@@ -190,7 +192,10 @@ export class DownloadService {
     const ytDlpProgress = this.createLineParser((line) => {
       const match = line.match(/\[download\]\s+(\d+\.?\d*)%/);
       if (match?.[1]) {
-        this.eventsGateway.emitDownloadProgress(movieId, 0, 'downloading');
+        this.progressMap.set(trackingId, {
+          progress: 0,
+          status: 'downloading',
+        });
       }
     });
 
@@ -203,14 +208,13 @@ export class DownloadService {
           Math.min(100, (ms / 1_000_000 / durationSeconds) * 100),
         );
         const totalPct = Math.round(pct * 0.99);
-        this.eventsGateway.emitDownloadProgress(
-          movieId,
-          Math.min(totalPct, 99),
-          mode === 'yt-dlp' ? 'converting' : 'downloading',
-        );
+        this.progressMap.set(trackingId, {
+          progress: Math.min(totalPct, 99),
+          status: mode === 'yt-dlp' ? 'converting' : 'downloading',
+        });
       }
       if (line.startsWith('progress=end')) {
-        this.eventsGateway.emitDownloadProgress(movieId, 100, 'ready');
+        this.progressMap.set(trackingId, { progress: 100, status: 'ready' });
       }
     });
 
@@ -745,6 +749,11 @@ export class DownloadService {
     return Number.isFinite(plainMinutes) && plainMinutes > 0
       ? Math.round(plainMinutes * 60)
       : 0;
+  }
+
+  getProgress(movieId: string, userId?: string) {
+    const trackingId = userId ? `${movieId}_${userId}` : movieId;
+    return this.progressMap.get(trackingId) || { progress: 0, status: 'idle' };
   }
 
   private resolveDurationSeconds(

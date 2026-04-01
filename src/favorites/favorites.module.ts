@@ -11,4 +11,3 @@ import { Movie } from '../movies/entities/movie.entity';
   providers: [FavoritesService],
 })
 export class FavoritesModule {}
-

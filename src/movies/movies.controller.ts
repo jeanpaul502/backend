@@ -17,6 +17,7 @@ import { DownloadService } from './download.service';
 import { CreateMovieDto } from './dto/create-movie.dto';
 import { UpdateMovieDto } from './dto/update-movie.dto';
 import { AuthGuard } from '@nestjs/passport';
+import { Req } from '@nestjs/common';
 
 @Controller('movies')
 @UseGuards(AuthGuard('jwt'))
@@ -59,9 +60,17 @@ export class MoviesController {
   async downloadMovie(
     @Param('id') id: string,
     @Query('format') format: string = 'mp4',
+    @Req() req: any,
     @Res() res: Response,
   ) {
-    return this.downloadService.convertAndStream(id, format, res);
+    const userId = req.user?.userId || req.user?.id;
+    return this.downloadService.convertAndStream(id, format, res, userId);
+  }
+
+  @Get(':id/download/progress')
+  getDownloadProgress(@Param('id') id: string, @Req() req: any) {
+    const userId = req.user?.userId || req.user?.id;
+    return this.downloadService.getProgress(id, userId);
   }
 
   @Get(':id')

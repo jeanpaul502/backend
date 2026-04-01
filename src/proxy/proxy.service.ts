@@ -293,7 +293,16 @@ export class ProxyService {
         isM3u8Content;
 
       res.status(resStatus);
-      res.setHeader('Content-Type', 'application/vnd.apple.mpegurl');
+
+      // Ensure strict Content-Type for Apple / React Native / Expo Video
+      // We must ALWAYS force it to application/x-mpegURL or application/vnd.apple.mpegurl
+      // Expo-video (ExoPlayer on Android) specifically looks for these.
+      if (isM3u8 || rewriteM3u8) {
+        res.setHeader('Content-Type', 'application/vnd.apple.mpegurl');
+      } else if (contentType) {
+        res.setHeader('Content-Type', contentType);
+      }
+
       res.setHeader('Cache-Control', 'no-cache');
       res.setHeader('Pragma', 'no-cache');
       res.setHeader('Access-Control-Allow-Origin', '*');
@@ -371,6 +380,10 @@ export class ProxyService {
       }
 
       // Pas de réécriture : streamer le manifeste tel quel
+      // Expo-video needs explicit Content-Type to play streams properly
+      if (isM3u8)
+        res.setHeader('Content-Type', 'application/vnd.apple.mpegurl');
+
       return await new Promise<void>((resolve, reject) => {
         res.on('close', () => {
           try {
