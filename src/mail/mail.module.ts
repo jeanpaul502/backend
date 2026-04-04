@@ -1,8 +1,8 @@
 import { Module } from '@nestjs/common';
 import { MailService } from './mail.service';
 import { MailerModule } from '@nestjs-modules/mailer';
-import { ConfigService } from '@nestjs/config';
 import { HandlebarsAdapter } from '@nestjs-modules/mailer/dist/adapters/handlebars.adapter';
+import { ConfigService } from '@nestjs/config';
 import { join } from 'path';
 
 @Module({
@@ -40,6 +40,7 @@ import { join } from 'path';
             },
             tls: {
               minVersion: 'TLSv1.2',
+              rejectUnauthorized: false,
             },
             connectionTimeout: 15000,
             greetingTimeout: 15000,
